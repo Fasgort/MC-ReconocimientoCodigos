@@ -20,9 +20,66 @@ class EdgeDetectionTestCase(unittest.TestCase):
         gray = cv2.cvtColor(self.images['test1.jpg'], cv2.COLOR_BGR2GRAY)
         edges = edge_detection(gray)
 
-        #cv2.imshow(self.test_edge_1.__name__, edges)
-        #cv2.waitKey(0);
-        cv2.imwrite(self.output_path + self.test_edge_1.__name__ + '.jpg', edges)
+        cv2.imshow(self.test_edge_1.__name__, edges)
+        cv2.waitKey(0);
+        # cv2.imwrite(self.output_path + self.test_edge_1.__name__ + '.jpg', edges)
+
+    def test_connected_components_1(self):
+        gray = cv2.cvtColor(self.images['test3.jpg'], cv2.COLOR_BGR2GRAY)
+        edges = edge_detection(gray)
+        connected_componens_detected = connected_components(edges)
+
+        cv2.imshow(self.test_connected_components_1.__name__, connected_componens_detected)
+        cv2.waitKey(0);
+        # cv2.imwrite(self.output_path + self.test_connected_components_1.__name__ + '.jpg', connected_componens_detected)
+
+    def test_barcode_detection_1(self):
+        img_name = 'test1.jpg'
+        original = self.images[img_name]
+        gray = cv2.cvtColor(self.images[img_name], cv2.COLOR_BGR2GRAY)
+        edges = edge_detection(gray)
+        connected_componens_detected = connected_components(edges)
+        barcode, barcode_detected = barcode_detection(connected_componens_detected, original)
+
+        cv2.imshow(self.test_barcode_detection_1.__name__ + 'detected', barcode_detected)
+        cv2.imshow(self.test_barcode_detection_1.__name__, barcode)
+        cv2.waitKey(0);
+        # cv2.imwrite(self.output_path + self.test_barcode_detection_1.__name__ + '.jpg', barcode_detected)
+
+    def test_barcode_detection_n(self):
+        for img_name, original in self.images.items():
+            # Resize
+            height, width = original.shape[:2]
+            scale_ratio = 600.0 / width
+            resized = cv2.resize(original, (int(scale_ratio * width), int(scale_ratio * height)),
+                                 interpolation=cv2.INTER_CUBIC)
+
+            gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+            edges = edge_detection(gray)
+            connected_components_detected = connected_components(edges)
+            barcode, barcode_detected = barcode_detection(connected_components_detected, resized)
+
+            cv2.imshow(self.test_barcode_detection_n.__name__ + img_name, barcode_detected)
+            cv2.waitKey(0);
+            # cv2.imwrite(self.output_path + self.test_barcode_detection_n.__name__+ img_name + '.jpg', barcode_detected)
+
+
+    def test_barcode_enhance_1(self):
+        for img_name, original in self.images.items():
+            # Resize
+            height, width = original.shape[:2]
+            scale_ratio = 600.0 / width
+            resize = cv2.resize(original, (int(scale_ratio * width), int(scale_ratio * height)),
+                                 interpolation=cv2.INTER_CUBIC)
+            gray = cv2.cvtColor(resize, cv2.COLOR_BGR2GRAY)
+            edges = edge_detection(gray)
+            connected_componens_detected = connected_components(edges)
+            barcode, barcode_detected = barcode_detection(connected_componens_detected, original)
+            barcode_enhanced = barcode_enhance(barcode)
+
+            cv2.imshow(self.test_barcode_enhance_1.__name__+img_name, barcode_enhanced)
+        cv2.waitKey(0);
+        # cv2.imwrite(self.output_path + self.test_barcode_enhance_1.__name__ + '.jpg', barcode_enhanced)
 
 
 if __name__ == '__main__':
