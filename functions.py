@@ -99,5 +99,50 @@ def barcode_extractor(barcode_img):
     return scanline
 
 
-def barcode_decode(barcode_selected):
+def barcode_decode(scanline_array):
+    
+    char_array = np.zeros((60, 1), int) # Carácteres codificados en EAN-13 barcode
+    change_count = 0 # Cambios entre blanco y negro en un barcode EAN-13
+    last_pixel = 0 # 0: White; 1: Black
+    last_decoded = 0
+    
+    while change_count is not 60:
+        pixel_count = 0
+        while last_pixel is not scanline_array[last_decoded]:
+            last_decoded += 1
+            pixel_count += 1
+        char_array[change_count] = pixel_count
+        last_pixel = scanline_array[last_decoded]
+        change_count += 1
+    
+    for c in char_array:
+        print(c)
+        
+    ean13_char_array = np.zeros((12,4),int)
+    
+    for c in range(12):
+        if c < 6:
+            for v in range(4):
+                ean13_char_array[c][v] = char_array[4+c*4+v]
+        else:
+            for v in range(4):
+                ean13_char_array[c][v] = char_array[9+c*4+v]
+    
+    for c in ean13_char_array:
+        print(c)
+        
+    ean13_binarycode_array = np.zeros((12,7), int)
+    
+    # Existen varias aproximaciones al problema de tomar el valor del carácter
+    # Media de valores, mediana, etc. En este caso tomaremos el valor del pixel medio
+    for c in ean13_char_array:
+        char_arr = ean13_char_array[c][0] + ean13_char_array[c][1] 
+        + ean13_char_array[c][2] + ean13_char_array[c][3]
+        length_arr = len(char_arr)
+        for v in ean13_char_array[c]:
+            ean13_binarycode_array[c][v] = char_arr[int(((length_arr/7)*(v+0.5))/length_arr)]
+
+    for c in ean13_binarycode_array:
+        print(c)
+            
     pass
