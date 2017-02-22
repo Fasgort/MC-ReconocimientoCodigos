@@ -21,20 +21,22 @@ def main(args):
     gray = cv2.cvtColor(images['test1.jpg'], cv2.COLOR_BGR2GRAY)
 
     # Rotar imagen
-    inclination_corrected = inclination_correction(gray)
+    # inclination_corrected = inclination_correction(gray)
 
     # Detección de bordes
-    edges = edge_detection(inclination_corrected)
+    # edges = edge_detection(inclination_corrected)
+    edges = edge_detection(gray)
 
     # Extraer componentes conectados y envolvente del CdB
     connected_components_detected = connected_components(edges)
-    barcode_selected = barcode_detection(connected_components_detected)
+    barcode, barcode_selected = barcode_detection(connected_components_detected, images['test1.jpg'])
 
     # Binarizar y mejorar
-    barcode_scanline = barcode_extractor(barcode_selected)
+    barcode_processed = barcode_extractor(barcode)
 
     # Algoritmo decodificación
-    barcode_data = barcode_decode(barcode_selected)
+    #barcode_data = 
+    barcode_decode(barcode_processed)
 
 
 def load_images(path):
