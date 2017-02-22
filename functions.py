@@ -107,5 +107,33 @@ def barcode_decode(scanline_array):
     
     for c in char_array:
         print(c)
+        
+    ean13_char_array = np.zeros((12,4),int)
+    
+    for c in range(12):
+        if c < 6:
+            for v in range(4):
+                ean13_char_array[c][v] = char_array[4+c*4+v]
+        else:
+            for v in range(4):
+                ean13_char_array[c][v] = char_array[9+c*4+v]
+    
+    for c in ean13_char_array:
+        print(c)
+        
+    ean13_binarycode_array = np.zeros((12,7), int)
+    
+    # Existen varias aproximaciones al problema de tomar el valor del carácter
+    # Media de valores, mediana, etc. En este caso tomaremos el valor del pixel medio
+    for c in ean13_char_array:
+        char_arr = ean13_char_array[c][0] + ean13_char_array[c][1] 
+        + ean13_char_array[c][2] + ean13_char_array[c][3]
+        length_arr = len(char_arr)
+        for v in ean13_char_array[c]:
+            ean13_binarycode_array[c][v] = char_arr[int(((length_arr/7)*(v+0.5))/length_arr)]
+
+    for c in ean13_binarycode_array:
+        print(c)
+            
     
     pass
