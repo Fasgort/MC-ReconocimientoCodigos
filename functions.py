@@ -89,5 +89,23 @@ def barcode_enhance(barcode_img):
     pass
 
 
-def barcode_decode(barcode_selected):
+def barcode_decode(scanline_array):
+    
+    char_array = np.zeros((60, 1), int) # Carácteres codificados en EAN-13 barcode
+    change_count = 0 # Cambios entre blanco y negro en un barcode EAN-13
+    last_pixel = 0 # 0: White; 1: Black
+    last_decoded = 0
+    
+    while change_count is not 60:
+        pixel_count = 0
+        while last_pixel is not scanline_array[last_decoded]:
+            last_decoded += 1
+            pixel_count += 1
+        char_array[change_count] = pixel_count
+        last_pixel = scanline_array[last_decoded]
+        change_count += 1
+    
+    for c in char_array:
+        print(c)
+    
     pass
