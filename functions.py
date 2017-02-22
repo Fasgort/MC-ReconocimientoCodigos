@@ -64,10 +64,10 @@ def connected_components(edges):
     return res
 
 
-def barcode_detection(edges_img, original_img=None):
+def barcode_detection(connected_component, original_img=None):
     barcode_img = None
     # Ref. http://docs.opencv.org/3.2.0/d4/d73/tutorial_py_contours_begin.html
-    (_, contours, _) = cv2.findContours(edges_img.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    (_, contours, _) = cv2.findContours(connected_component.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # Filtro solo el mayor
     c = sorted(contours, key=cv2.contourArea, reverse=True)[0]
     # Definir límites de contorno
@@ -85,27 +85,19 @@ def barcode_detection(edges_img, original_img=None):
     return res, barcode_highlighted
 
 
-def barcode_enhance(barcode_img):
-    pass
+def barcode_extractor(barcode_img):
+    if barcode_img.shape[2] > 1:
+        gray = cv2.cvtColor(barcode_img, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = barcode_img
+    smoothed = cv2.GaussianBlur(gray, (5, 3), 0)
+    # Binarizar
+    ret3, th3 = cv2.threshold(smoothed, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    scanline_pos = int(th3.shape[0] / 2)
+    scanline = [1 if i == 255 else 0 for i in th3[scanline_pos,:]]
+
+    return scanline
 
 
-def barcode_decode(scanline_array):
-    
-    char_array = np.zeros((60, 1), int) # Carácteres codificados en EAN-13 barcode
-    change_count = 0 # Cambios entre blanco y negro en un barcode EAN-13
-    last_pixel = 0 # 0: White; 1: Black
-    last_decoded = 0
-    
-    while change_count is not 60:
-        pixel_count = 0
-        while last_pixel is not scanline_array[last_decoded]:
-            last_decoded += 1
-            pixel_count += 1
-        char_array[change_count] = pixel_count
-        last_pixel = scanline_array[last_decoded]
-        change_count += 1
-    
-    for c in char_array:
-        print(c)
-    
+def barcode_decode(barcode_selected):
     pass

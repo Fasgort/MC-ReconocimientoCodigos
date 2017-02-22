@@ -26,11 +26,12 @@ def main(args):
     # Detección de bordes
     edges = edge_detection(inclination_corrected)
 
-    # Binarizar y mejorar
-    barcode_enhanced = barcode_enhance(edges)
-
     # Extraer componentes conectados y envolvente del CdB
-    barcode_selected = barcode_detection(barcode_enhanced)
+    connected_components_detected = connected_components(edges)
+    barcode_selected = barcode_detection(connected_components_detected)
+
+    # Binarizar y mejorar
+    barcode_scanline = barcode_extractor(barcode_selected)
 
     # Algoritmo decodificación
     barcode_data = barcode_decode(barcode_selected)
