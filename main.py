@@ -35,8 +35,10 @@ def main(args):
     barcode_processed = barcode_extractor(barcode)
 
     # Algoritmo decodificación
-    #barcode_data = 
-    barcode_decode(barcode_processed)
+    barcode_data = barcode_decode(barcode_processed)
+    
+    # Print a pantalla del resultado final
+    print(barcode_data)
 
 
 def load_images(path):

@@ -103,46 +103,125 @@ def barcode_decode(scanline_array):
     
     char_array = np.zeros((60, 1), int) # Carácteres codificados en EAN-13 barcode
     change_count = 0 # Cambios entre blanco y negro en un barcode EAN-13
-    last_pixel = 0 # 0: White; 1: Black
-    last_decoded = 0
+    last_pixel = 1 # 0: Black; 1: White
+    last_decoded = 5 # Pixel donde empieza a leer
     
-    while change_count is not 60:
+    while change_count != 60:
         pixel_count = 0
-        while last_pixel is not scanline_array[last_decoded]:
+        while last_pixel is scanline_array[last_decoded]:
             last_decoded += 1
             pixel_count += 1
         char_array[change_count] = pixel_count
         last_pixel = scanline_array[last_decoded]
         change_count += 1
-    
-    for c in char_array:
-        print(c)
         
     ean13_char_array = np.zeros((12,4),int)
-    
     for c in range(12):
-        if c < 6:
+        if c < 6: # Blanco, negro, blanco, negro
             for v in range(4):
                 ean13_char_array[c][v] = char_array[4+c*4+v]
-        else:
+        else: # Negro, blanco, negro, blanco
             for v in range(4):
                 ean13_char_array[c][v] = char_array[9+c*4+v]
-    
-    for c in ean13_char_array:
-        print(c)
         
-    ean13_binarycode_array = np.zeros((12,7), int)
-    
     # Existen varias aproximaciones al problema de tomar el valor del carácter
     # Media de valores, mediana, etc. En este caso tomaremos el valor del pixel medio
-    for c in ean13_char_array:
-        char_arr = ean13_char_array[c][0] + ean13_char_array[c][1] 
-        + ean13_char_array[c][2] + ean13_char_array[c][3]
-        length_arr = len(char_arr)
-        for v in ean13_char_array[c]:
-            ean13_binarycode_array[c][v] = char_arr[int(((length_arr/7)*(v+0.5))/length_arr)]
-
-    for c in ean13_binarycode_array:
-        print(c)
-            
-    pass
+    ean13_binarycode_array = np.zeros((12,7), int)
+    for c in range(len(ean13_char_array)):
+        for v in range(7):
+            length_arr = ean13_char_array[c][0] + ean13_char_array[c][1] + ean13_char_array[c][2] + ean13_char_array[c][3]
+            pixel_pos = int((length_arr/7)*(v+0.5)) - ean13_char_array[c][0]
+            character_pos = 0
+            while pixel_pos > 0:
+                character_pos += 1
+                pixel_pos -= ean13_char_array[c][character_pos]
+            #print(character_pos)
+            if c < 6: # Blanco, negro, blanco, negro
+                if character_pos % 2 is 1: # Negro
+                    ean13_binarycode_array[c][v] = 1
+                else: # Blanco
+                    ean13_binarycode_array[c][v] = 0
+            else: # Negro, blanco, negro, blanco
+                if character_pos % 2 is 1: # Blanco
+                    ean13_binarycode_array[c][v] = 0
+                else: # Negro
+                    ean13_binarycode_array[c][v] = 1
+    
+    # Etapa final, decodificación
+    parity = []
+    decoded_1 = []
+    decoded_2 = []
+    
+    for c in range(6):
+        count = 0
+        character = []
+        for v in ean13_binarycode_array[c]:
+            count += v
+            character.append(str(v))
+        if count % 2 == 0:
+            parity.append("E")
+            decode_dict = {
+            "0100111": "0",
+            "0110011": "1",
+            "0011011": "2",
+            "0100001": "3",
+            "0011101": "4",
+            "0111001": "5",
+            "0000101": "6",
+            "0010001": "7",
+            "0001001": "8",
+            "0010111": "9",
+            }
+            decoded_1.append(decode_dict.get("".join(character),"E"))
+        else:
+            parity.append("O")
+            decode_dict = {
+            "0001101": "0",
+            "0011001": "1",
+            "0010011": "2",
+            "0111101": "3",
+            "0100011": "4",
+            "0110001": "5",
+            "0101111": "6",
+            "0111011": "7",
+            "0110111": "8",
+            "0001011": "9",
+            }
+            decoded_1.append(decode_dict.get("".join(character),"E"))
+    
+    for c in range(6,12):
+        count = 0
+        character = []
+        for v in ean13_binarycode_array[c]:
+            count += v
+            character.append(str(v))
+        decode_dict = {
+        "1110010": "0",
+        "1100110": "1",
+        "1101100": "2",
+        "1000010": "3",
+        "1011100": "4",
+        "1001110": "5",
+        "1010000": "6",
+        "1000100": "7",
+        "1001000": "8",
+        "1110100": "9",
+        }
+        decoded_2.append(decode_dict.get("".join(character),"E"))
+    
+    decode_dict = {
+    "OOOOOO": "0",
+    "OOEOEE": "1",
+    "OOEEOE": "2",
+    "OOEEEO": "3",
+    "OEOOEE": "4",
+    "OEEOOE": "5",
+    "OEEEOO": "6",
+    "OEOEOE": "7",
+    "OEOEEO": "8",
+    "OEEOEO": "9",
+    }
+    decoded_string = decode_dict.get("".join(parity),"E")
+    decoded_string += " " + "".join(decoded_1) + " " + "".join(decoded_2)
+    
+    return decoded_string
