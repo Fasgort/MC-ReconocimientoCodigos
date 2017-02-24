@@ -210,7 +210,6 @@ def barcode_decode(scanline_array):
             while pixel_pos > 0:
                 character_pos += 1
                 pixel_pos -= ean13_char_array[c][character_pos]
-            #print(character_pos)
             if c < 6:  # Blanco, negro, blanco, negro
                 if character_pos % 2 is 1:  # Negro
                     ean13_binarycode_array[c][v] = 1
@@ -226,7 +225,19 @@ def barcode_decode(scanline_array):
     parity = []
     decoded_1 = []
     decoded_2 = []
-
+    
+    # Edge cases
+    count = 0
+    for v in ean13_binarycode_array[0]:
+        count += v
+    if count % 2 == 0:
+        # gg wp - El código de barras está siendo leído al revés
+        reversed_ean13_binarycode_array = np.zeros((12,7), int)
+        for c in range(12):
+            for v in range(7):
+                reversed_ean13_binarycode_array[c][v] = ean13_binarycode_array[11-c][6-v]
+        ean13_binarycode_array = reversed_ean13_binarycode_array
+    
     for c in range(6):
         count = 0
         character = []
