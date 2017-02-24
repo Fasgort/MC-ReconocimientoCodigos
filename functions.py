@@ -96,10 +96,6 @@ def barcode_detection(connected_component, original_img=None):
     # Ref. http://docs.opencv.org/2.4.2/modules/core/doc/drawing_functions.html#drawcontours
     barcode_highlighted = cv2.rectangle(original_img, (c_start_x, c_start_y),
                                         (c_start_x + c_wide, c_start_y + c_height), (0, 0, 255), 2)
-
-    # Recortar solo código de barras
-    if original_img is not None:
-        barcode_img = original_img[c_start_y:c_start_y + c_height, c_start_x:c_start_x + c_wide]
     res = barcode_img
     return res, barcode_highlighted
 
