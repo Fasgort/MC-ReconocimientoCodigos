@@ -179,16 +179,19 @@ def barcode_decode(scanline_array):
     char_array = np.zeros((60, 1), int) # Carácteres codificados en EAN-13 barcode
     change_count = 0 # Cambios entre blanco y negro en un barcode EAN-13
     last_pixel = 1 # 0: Black; 1: White
-    last_decoded = 5 # Pixel donde empieza a leer
+    last_decoded = 0 # Pixel donde empieza a leer
     
-    while change_count != 60:
-        pixel_count = 0
-        while last_pixel is scanline_array[last_decoded]:
-            last_decoded += 1
-            pixel_count += 1
-        char_array[change_count] = pixel_count
-        last_pixel = scanline_array[last_decoded]
-        change_count += 1
+    try:
+        while change_count != 60:
+            pixel_count = 0
+            while last_pixel is scanline_array[last_decoded]:
+                last_decoded += 1
+                pixel_count += 1
+            char_array[change_count] = pixel_count
+            last_pixel = scanline_array[last_decoded]
+            change_count += 1
+    except Exception:
+        return "E1" # Error E1: Scanline has not a barcode
 
     ean13_char_array = np.zeros((12,4),int)
     for c in range(12):
@@ -309,5 +312,8 @@ def barcode_decode(scanline_array):
     }
     decoded_string = decode_dict.get("".join(parity),"E")
     decoded_string += " " + "".join(decoded_1) + " " + "".join(decoded_2)
+    
+    if 'E' in decoded_string:
+        return 'E2' # Error E2: Some characters couldn't be decoded
     
     return decoded_string
