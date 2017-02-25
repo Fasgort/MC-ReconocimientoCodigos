@@ -18,7 +18,13 @@ _DEFAULT_INPUT_PATH = './Resources/'
 def main(args):
     # Load images
     images = load_images(args.input)
-    gray = cv2.cvtColor(images['test1.jpg'], cv2.COLOR_BGR2GRAY)
+    image_name = 'test1.jpg'
+
+    # Obtener máscara de filtro de color
+    color_filtered, mask = color_filter(images[image_name])
+
+    # Cambiar a espacio de color escala de grises
+    gray = cv2.cvtColor(images[image_name], cv2.COLOR_BGR2GRAY)
 
     # Rotar imagen
     # inclination_corrected = inclination_correction(gray)
@@ -28,14 +34,17 @@ def main(args):
     edges = edge_detection(gray)
 
     # Extraer componentes conectados y envolvente del CdB
-    connected_components_detected = connected_components(edges)
-    barcode, barcode_selected = barcode_detection(connected_components_detected, images['test1.jpg'])
+    connected_components_detected = connected_components(edges, mask)
+    barcode, barcode_selected = barcode_detection(connected_components_detected, images[image_name])
 
-    # Binarizar y mejorar
-    barcode_processed = barcode_extractor(barcode)
+    for i in range(4):
+        # Binarizar y mejorar
+        barcode_processed = barcode_extractor(barcode,i)
 
-    # Algoritmo decodificación
-    barcode_data = barcode_decode(barcode_processed)
+        # Algoritmo decodificación
+        barcode_data = barcode_decode(barcode_processed)
+        if 'E' not in barcode_data:
+            break
     
     # Print a pantalla del resultado final
     print(barcode_data)
