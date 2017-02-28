@@ -48,7 +48,7 @@ def edge_detection(image):
     # Ref. http://docs.opencv.org/3.2.0/d7/d4d/tutorial_py_thresholding.html
     smoothed_edges = cv2.GaussianBlur(edges, (3, 3), 0)
     # Ref. http://docs.opencv.org/2.4/doc/tutorials/imgproc/threshold/threshold.html
-    (_, thresh) = cv2.threshold(smoothed_edges, 80, 255, cv2.THRESH_BINARY)
+    (_, thresh) = cv2.threshold(smoothed_edges, 100, 255, cv2.THRESH_BINARY)
     res = thresh
     return res
 
@@ -63,6 +63,9 @@ def connected_components(edges, mask=None, size_correction=0):
     elif size_correction == 2:
         strut_x = 150
         strut_y = 80
+    elif size_correction == 3:
+        strut_x = 19
+        strut_y = 3
     else:
         strut_x = 46
         strut_y = 15
