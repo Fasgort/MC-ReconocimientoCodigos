@@ -18,36 +18,44 @@ _DEFAULT_INPUT_PATH = './Resources/'
 def main(args):
     # Load images
     images = load_images(args.input)
-    image_name = 'test1.jpg'
+    # image_name = '20170223_151830noise.jpg'
+    # img = images[image_name]
+    for image_name, img in images.items():
+        if image_name[:3] != 'IMG':
+            # Obtener máscara de filtro de color
+            color_filtered, mask = color_filter(img)
 
-    # Obtener máscara de filtro de color
-    color_filtered, mask = color_filter(images[image_name])
+            # Cambiar a espacio de color escala de grises
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # Cambiar a espacio de color escala de grises
-    gray = cv2.cvtColor(images[image_name], cv2.COLOR_BGR2GRAY)
+            # Rotar imagen
+            # inclination_corrected = inclination_correction(gray)
 
-    # Rotar imagen
-    # inclination_corrected = inclination_correction(gray)
+            # Detección de bordes
+            # edges = edge_detection(inclination_corrected)
+            edges = edge_detection(gray)
+            # Probar para 4 posibles distancias
+            for size_correction in range(4):
+                # Extraer componentes conectados y envolvente del CdB
+                connected_components_detected = connected_components(edges, mask, size_correction)
+                barcode, barcode_selected = barcode_detection(connected_components_detected, images[image_name])
+                #cv2.imshow(image_name, utils.resize(barcode))
+                #cv2.waitKey(0)
+                barcode_data = 'E'
+                # Probar escaneado a 8 alturas diferentes
+                for i in range(1, 8):
+                    # Binarizar y mejorar
+                    barcode_processed = barcode_extractor(barcode, i/2)
 
-    # Detección de bordes
-    # edges = edge_detection(inclination_corrected)
-    edges = edge_detection(gray)
+                    # Algoritmo decodificación
+                    barcode_data = barcode_decode(barcode_processed)
+                    if 'E' not in barcode_data:
+                        break
 
-    # Extraer componentes conectados y envolvente del CdB
-    connected_components_detected = connected_components(edges, mask)
-    barcode, barcode_selected = barcode_detection(connected_components_detected, images[image_name])
-
-    for i in range(4):
-        # Binarizar y mejorar
-        barcode_processed = barcode_extractor(barcode,i)
-
-        # Algoritmo decodificación
-        barcode_data = barcode_decode(barcode_processed)
-        if 'E' not in barcode_data:
-            break
-    
-    # Print a pantalla del resultado final
-    print(barcode_data)
+                # Print a pantalla del resultado final
+                print("=> {}\t\t{}".format(image_name, barcode_data))
+                if 'E' not in barcode_data:
+                    break
 
 
 def load_images(path):

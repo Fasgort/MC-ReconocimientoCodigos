@@ -48,17 +48,29 @@ def edge_detection(image):
     # Ref. http://docs.opencv.org/3.2.0/d7/d4d/tutorial_py_thresholding.html
     smoothed_edges = cv2.GaussianBlur(edges, (3, 3), 0)
     # Ref. http://docs.opencv.org/2.4/doc/tutorials/imgproc/threshold/threshold.html
-    (_, thresh) = cv2.threshold(smoothed_edges, 200, 255, cv2.THRESH_BINARY)
+    (_, thresh) = cv2.threshold(smoothed_edges, 80, 255, cv2.THRESH_BINARY)
     res = thresh
     return res
 
 
-def connected_components(edges, mask=None):
+def connected_components(edges, mask=None, size_correction=0):
+    if size_correction == 0:
+        strut_x = 46
+        strut_y = 15
+    elif size_correction == 1:
+        strut_x = 80
+        strut_y = 15
+    elif size_correction == 2:
+        strut_x = 150
+        strut_y = 80
+    else:
+        strut_x = 46
+        strut_y = 15
     if mask is not None:
         edges = cv2.bitwise_and(edges, edges, mask=mask)
     # Operaciones morfológicas: closing & erosion
     # Ref. http://docs.opencv.org/2.4/doc/tutorials/imgproc/opening_closing_hats/opening_closing_hats.html
-    closing_mask = cv2.getStructuringElement(cv2.MORPH_RECT, (30, 10))  # 20 7
+    closing_mask = cv2.getStructuringElement(cv2.MORPH_RECT, (strut_x, strut_y))
     closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, closing_mask)
     # Ref. http://docs.opencv.org/2.4/doc/tutorials/imgproc/erosion_dilatation/erosion_dilatation.html
     eroded = cv2.erode(closed, None, iterations=4)
@@ -94,7 +106,8 @@ def barcode_detection(connected_component, original_img=None):
         barcode_img = np.copy(original_img[c_start_y:c_start_y + c_height, c_start_x:c_start_x + c_wide])
     # Dibujar contorno
     # Ref. http://docs.opencv.org/2.4.2/modules/core/doc/drawing_functions.html#drawcontours
-    barcode_highlighted = cv2.rectangle(original_img, (c_start_x, c_start_y),
+    barcode_highlighted = original_img.copy()
+    barcode_highlighted = cv2.rectangle(barcode_highlighted, (c_start_x, c_start_y),
                                         (c_start_x + c_wide, c_start_y + c_height), (0, 0, 255), 2)
     res = barcode_img
     return res, barcode_highlighted
@@ -175,12 +188,11 @@ def barcode_extractor(barcode_img, scan_x_pos=2):
 
 
 def barcode_decode(scanline_array):
-    
-    char_array = np.zeros((60, 1), int) # Carácteres codificados en EAN-13 barcode
-    change_count = 0 # Cambios entre blanco y negro en un barcode EAN-13
-    last_pixel = 1 # 0: Black; 1: White
-    last_decoded = 0 # Pixel donde empieza a leer
-    
+    char_array = np.zeros((60, 1), int)  # Carácteres codificados en EAN-13 barcode
+    change_count = 0  # Cambios entre blanco y negro en un barcode EAN-13
+    last_pixel = 1  # 0: Black; 1: White
+    last_decoded = 0  # Pixel donde empieza a leer
+
     try:
         while change_count != 60:
             pixel_count = 0
@@ -191,24 +203,25 @@ def barcode_decode(scanline_array):
             last_pixel = scanline_array[last_decoded]
             change_count += 1
     except Exception:
-        return "E1" # Error E1: Scanline has not a barcode
+        return "E1"  # Error E1: Scanline has not a barcode
 
-    ean13_char_array = np.zeros((12,4),int)
+    ean13_char_array = np.zeros((12, 4), int)
     for c in range(12):
         if c < 6:  # Blanco, negro, blanco, negro
             for v in range(4):
-                ean13_char_array[c][v] = char_array[4+c*4+v]
+                ean13_char_array[c][v] = char_array[4 + c * 4 + v]
         else:  # Negro, blanco, negro, blanco
             for v in range(4):
-                ean13_char_array[c][v] = char_array[9+c*4+v]
+                ean13_char_array[c][v] = char_array[9 + c * 4 + v]
 
     # Existen varias aproximaciones al problema de tomar el valor del carácter
     # Media de valores, mediana, etc. En este caso tomaremos el valor del pixel medio
-    ean13_binarycode_array = np.zeros((12,7), int)
+    ean13_binarycode_array = np.zeros((12, 7), int)
     for c in range(len(ean13_char_array)):
         for v in range(7):
-            length_arr = ean13_char_array[c][0] + ean13_char_array[c][1] + ean13_char_array[c][2] + ean13_char_array[c][3]
-            pixel_pos = int((length_arr/7)*(v+0.5)) - ean13_char_array[c][0]
+            length_arr = ean13_char_array[c][0] + ean13_char_array[c][1] + ean13_char_array[c][2] + ean13_char_array[c][
+                3]
+            pixel_pos = int((length_arr / 7) * (v + 0.5)) - ean13_char_array[c][0]
             character_pos = 0
             while pixel_pos > 0:
                 character_pos += 1
@@ -228,19 +241,19 @@ def barcode_decode(scanline_array):
     parity = []
     decoded_1 = []
     decoded_2 = []
-    
+
     # Edge cases
     count = 0
     for v in ean13_binarycode_array[0]:
         count += v
     if count % 2 == 0:
         # gg wp - El código de barras está siendo leído al revés
-        reversed_ean13_binarycode_array = np.zeros((12,7), int)
+        reversed_ean13_binarycode_array = np.zeros((12, 7), int)
         for c in range(12):
             for v in range(7):
-                reversed_ean13_binarycode_array[c][v] = ean13_binarycode_array[11-c][6-v]
+                reversed_ean13_binarycode_array[c][v] = ean13_binarycode_array[11 - c][6 - v]
         ean13_binarycode_array = reversed_ean13_binarycode_array
-    
+
     for c in range(6):
         count = 0
         character = []
@@ -261,59 +274,59 @@ def barcode_decode(scanline_array):
                 "0001001": "8",
                 "0010111": "9",
             }
-            decoded_1.append(decode_dict.get("".join(character),"E"))
+            decoded_1.append(decode_dict.get("".join(character), "E"))
         else:
             parity.append("O")
             decode_dict = {
-            "0001101": "0",
-            "0011001": "1",
-            "0010011": "2",
-            "0111101": "3",
-            "0100011": "4",
-            "0110001": "5",
-            "0101111": "6",
-            "0111011": "7",
-            "0110111": "8",
-            "0001011": "9",
+                "0001101": "0",
+                "0011001": "1",
+                "0010011": "2",
+                "0111101": "3",
+                "0100011": "4",
+                "0110001": "5",
+                "0101111": "6",
+                "0111011": "7",
+                "0110111": "8",
+                "0001011": "9",
             }
-            decoded_1.append(decode_dict.get("".join(character),"E"))
-    
-    for c in range(6,12):
+            decoded_1.append(decode_dict.get("".join(character), "E"))
+
+    for c in range(6, 12):
         count = 0
         character = []
         for v in ean13_binarycode_array[c]:
             count += v
             character.append(str(v))
         decode_dict = {
-        "1110010": "0",
-        "1100110": "1",
-        "1101100": "2",
-        "1000010": "3",
-        "1011100": "4",
-        "1001110": "5",
-        "1010000": "6",
-        "1000100": "7",
-        "1001000": "8",
-        "1110100": "9",
+            "1110010": "0",
+            "1100110": "1",
+            "1101100": "2",
+            "1000010": "3",
+            "1011100": "4",
+            "1001110": "5",
+            "1010000": "6",
+            "1000100": "7",
+            "1001000": "8",
+            "1110100": "9",
         }
-        decoded_2.append(decode_dict.get("".join(character),"E"))
-    
+        decoded_2.append(decode_dict.get("".join(character), "E"))
+
     decode_dict = {
-    "OOOOOO": "0",
-    "OOEOEE": "1",
-    "OOEEOE": "2",
-    "OOEEEO": "3",
-    "OEOOEE": "4",
-    "OEEOOE": "5",
-    "OEEEOO": "6",
-    "OEOEOE": "7",
-    "OEOEEO": "8",
-    "OEEOEO": "9",
+        "OOOOOO": "0",
+        "OOEOEE": "1",
+        "OOEEOE": "2",
+        "OOEEEO": "3",
+        "OEOOEE": "4",
+        "OEEOOE": "5",
+        "OEEEOO": "6",
+        "OEOEOE": "7",
+        "OEOEEO": "8",
+        "OEEOEO": "9",
     }
-    decoded_string = decode_dict.get("".join(parity),"E")
+    decoded_string = decode_dict.get("".join(parity), "E")
     decoded_string += " " + "".join(decoded_1) + " " + "".join(decoded_2)
-    
+
     if 'E' in decoded_string:
-        return 'E2' # Error E2: Some characters couldn't be decoded
-    
+        return 'E2'  # Error E2: Some characters couldn't be decoded
+
     return decoded_string
