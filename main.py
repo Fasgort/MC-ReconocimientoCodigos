@@ -21,7 +21,6 @@ def main(args):
     # image_name = '20170223_151830noise.jpg'
     # img = images[image_name]
     for image_name, img in images.items():
-        if image_name[:3] != 'IMG':
             # Obtener máscara de filtro de color
             color_filtered, mask = color_filter(img)
 
@@ -35,7 +34,7 @@ def main(args):
             # edges = edge_detection(inclination_corrected)
             edges = edge_detection(gray)
             # Probar para 4 posibles distancias
-            for size_correction in range(4):
+            for size_correction in range(5):
                 # Extraer componentes conectados y envolvente del CdB
                 connected_components_detected = connected_components(edges, mask, size_correction)
                 barcode, barcode_selected = barcode_detection(connected_components_detected, images[image_name])
