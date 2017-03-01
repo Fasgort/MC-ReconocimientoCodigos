@@ -335,10 +335,21 @@ def barcode_decode(scanline_array):
         "OEOEEO": "8",
         "OEEOEO": "9",
     }
-    decoded_string = decode_dict.get("".join(parity), "E")
-    decoded_string += " " + "".join(decoded_1) + " " + "".join(decoded_2)
+    parity_char = decode_dict.get("".join(parity), "E")
+    decoded_string = parity_char + " " + "".join(decoded_1) + " " + "".join(decoded_2)
 
     if 'E' in decoded_string:
         return 'E2'  # Error E2: Some characters couldn't be decoded
-
+        
+    # Checksum check EAN-13
+    decoded_list = [parity_char] + decoded_1 + decoded_2
+    accumulated = 0
+    for x in range(len(decoded_list)-1):
+        if x % 2 == 0:
+            accumulated += int(decoded_list[x])
+        else:
+            accumulated += int(decoded_list[x]) * 3
+    if int(decoded_list[12]) != abs((accumulated%10)-10):
+        return 'E3'  # Error E3: Checksum is wrong
+            
     return decoded_string
