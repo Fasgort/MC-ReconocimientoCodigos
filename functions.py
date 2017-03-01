@@ -34,12 +34,15 @@ def edge_detection(image):
     # Ref. http://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_transforms/py_fourier_transform/py_fourier_transform.html#why-laplacian-is-a-high-pass-filter
     # Eliminar ruido
     # Sal y pimienta
-    blur = cv2.medianBlur(image, 3)
+    blur = cv2.medianBlur(image, 7)
     # Filtro bilateral (que preserva bordes)
     smooth = cv2.bilateralFilter(blur, 11, 17, 17)
+    # Mejorar contraste
+    clahe = cv2.createCLAHE(clipLimit=2)
+    enh = clahe.apply(smooth)
     # Aplicar gradiente en ambos ejes
-    grad_x = cv2.Sobel(smooth, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=-1)
-    grad_y = cv2.Sobel(smooth, ddepth=cv2.CV_32F, dx=0, dy=1, ksize=-1)
+    grad_x = cv2.Sobel(enh, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=-1)
+    grad_y = cv2.Sobel(enh, ddepth=cv2.CV_32F, dx=0, dy=1, ksize=-1)
     # Restar gradientes para obtener bordes en ambos ejes
     gradient = cv2.subtract(grad_x, grad_y)
     # Obtener valores absolutos para obtener imagen válida [0,255]
@@ -58,12 +61,18 @@ def connected_components(edges, mask=None, size_correction=0):
         strut_x = 46
         strut_y = 15
     elif size_correction == 1:
+        strut_x = 30
+        strut_y = 10
+    elif size_correction == 2:
         strut_x = 80
         strut_y = 15
-    elif size_correction == 2:
+    elif size_correction == 3:
+        strut_x = 110
+        strut_y = 15
+    elif size_correction == 4:
         strut_x = 150
         strut_y = 80
-    elif size_correction == 3:
+    elif size_correction == 5:
         strut_x = 19
         strut_y = 3
     else:
@@ -90,8 +99,8 @@ def connected_components(edges, mask=None, size_correction=0):
     """
     connected = cv2.connectedComponents(dilated)
     # Asignar a cada uno de los componentes un valor diferenciador
-    connected_components = np.uint8((connected[1] * 255) / connected[0])
-    res = connected_components
+    components = np.uint8((connected[1] * 255) / connected[0])
+    res = components
     return res
 
 
