@@ -13,23 +13,21 @@ def inclination_correction(image):
 
 
 def color_filter(image):
+    """ Make color filter for given image
+    Args:
+        image (image) Image to get its color filter
+    Returns:
+        (image,image) Tuple of images, borders highlighted and color filter mask
+    """
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    v_limit = 56  # 51
-    s_limit = 56  # 148
+    v_limit = 56 # Valor mínimo 20%
+    s_limit = 56 # Saturación máxima 20%
     lower_white = np.array([0, 0, v_limit], dtype=np.uint8)
     upper_white = np.array([255, s_limit, 255], dtype=np.uint8)
     mask = cv2.inRange(hsv, lower_white, upper_white)
     mask_dilated = cv2.dilate(mask, None, iterations=2)
     return cv2.bitwise_and(image, image, mask=mask_dilated), mask
 
-def barcode_postprocess(image):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    blur = cv2.medianBlur(gray, 7)
-    smooth = cv2.GaussianBlur(blur,(1,9), 0)
-    clahe = cv2.createCLAHE(clipLimit=2)
-    enh = clahe.apply(smooth)
-    res = cv2.cvtColor(enh, cv2.COLOR_GRAY2BGR)
-    return res
 
 def edge_detection(image):
     """ Extracts edges from image
@@ -38,7 +36,7 @@ def edge_detection(image):
     Returns:
         (image) Image with borders highlighted
     """
-    # http://www.pyimagesearch.com/2014/04/21/building-pokedex-python-finding-game-boy-screen-step-4-6/
+    # Ref. http://www.pyimagesearch.com/2014/04/21/building-pokedex-python-finding-game-boy-screen-step-4-6/
     # Ref. http://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_transforms/py_fourier_transform/py_fourier_transform.html#why-laplacian-is-a-high-pass-filter
     # Eliminar ruido
     # Sal y pimienta
@@ -48,7 +46,7 @@ def edge_detection(image):
     # Mejorar contraste
     clahe = cv2.createCLAHE(clipLimit=2)
     enh = clahe.apply(smooth)
-    # Aplicar gradiente en ambos ejes
+    # Obtener gradientes en ambos ejes
     grad_x = cv2.Sobel(enh, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=-1)
     grad_y = cv2.Sobel(enh, ddepth=cv2.CV_32F, dx=0, dy=1, ksize=-1)
     # Restar gradientes para obtener bordes en ambos ejes
@@ -65,6 +63,14 @@ def edge_detection(image):
 
 
 def connected_components(edges, mask=None, size_correction=0):
+    """ Returns connected components optimized for barcodes detection
+    Args:
+        edges (gray scale image) Image to rotate
+        mask (binary image) Mask to apply after processing
+        size_correction (int) Distance from where the make was made
+    Returns:
+        (image) Image with connected components differentiated by intensity
+    """
     if size_correction == 0:
         strut_x = 46
         strut_y = 15
@@ -95,33 +101,32 @@ def connected_components(edges, mask=None, size_correction=0):
     # Ref. http://docs.opencv.org/2.4/doc/tutorials/imgproc/erosion_dilatation/erosion_dilatation.html
     eroded = cv2.erode(closed, None, iterations=4)
     dilated = cv2.dilate(eroded, None, iterations=4)
-    # cv2.imshow('erode', eroded)
-    # cv2.imshow('dilate', dilated)
     # Detectar componentes conectados
     # Ref. http://aishack.in/tutorials/labelling-connected-components-example/
-    """ connected:
-        num_labels = connected[0]
-        labels = connected[1]
-        stats = connected[2]
-        centroids = connected[3]
-    """
     connected = cv2.connectedComponents(dilated)
-    # Asignar a cada uno de los componentes un valor diferenciador
+    # Asignar a cada uno de las componentes un valor diferenciador
     components = np.uint8((connected[1] * 255) / connected[0])
     res = components
     return res
 
 
 def barcode_detection(connected_component, original_img=None):
+    """ Returns image with barcode centered
+    Args:
+        connected_component (gray scale image) Connected components image
+        original_img (image) Image to extract original barcode
+    Returns:
+        (image, image) Tuple of images barcode centered image and original image with barcode highlighted
+    """
     barcode_img = None
     # Ref. http://docs.opencv.org/3.2.0/d4/d73/tutorial_py_contours_begin.html
     (_, contours, _) = cv2.findContours(connected_component.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    # Filtro solo el mayor
+    # Solo contorno con mayor área
     c = sorted(contours, key=cv2.contourArea, reverse=True)[0]
     # Definir límites de contorno
     # Ref. http://opencvpython.blogspot.com.es/2012/06/contours-2-brotherhood.html
     c_start_x, c_start_y, c_wide, c_height = cv2.boundingRect(c)
-    # Recortar solo código de barras
+    # Recortar  código de barras
     if original_img is not None:
         barcode_img = np.copy(original_img[c_start_y:c_start_y + c_height, c_start_x:c_start_x + c_wide])
     # Dibujar contorno
@@ -131,6 +136,16 @@ def barcode_detection(connected_component, original_img=None):
                                         (c_start_x + c_wide, c_start_y + c_height), (0, 0, 255), 2)
     res = barcode_img
     return res, barcode_highlighted
+
+
+def barcode_postprocess(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    blur = cv2.medianBlur(gray, 7)
+    smooth = cv2.GaussianBlur(blur, (1, 9), 0)
+    clahe = cv2.createCLAHE(clipLimit=2)
+    enh = clahe.apply(smooth)
+    res = cv2.cvtColor(enh, cv2.COLOR_GRAY2BGR)
+    return res
 
 
 def barcode_extractor(barcode_img, scan_x_pos=2):

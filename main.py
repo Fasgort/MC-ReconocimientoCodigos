@@ -9,7 +9,7 @@ from functions import *
 __date__ = '2017.02.15'
 
 """
-MC - D2 - Barcode detection & recognition
+MC - D2 - Barcode detection & decoding
 """
 _DEFAULT_OUTPUT_PATH = './Output/'
 _DEFAULT_INPUT_PATH = './Resources/'
@@ -18,8 +18,7 @@ _DEFAULT_INPUT_PATH = './Resources/'
 def main(args):
     # Load images
     images = load_images(args.input)
-    # image_name = 'a1.jpg'
-    # img = images[image_name]
+
     for image_name, img in images.items():
         # Obtener máscara de filtro de color
         color_filtered, mask = color_filter(img)
@@ -33,34 +32,35 @@ def main(args):
         # Detección de bordes
         # edges = edge_detection(inclination_corrected)
         edges = edge_detection(gray)
+
         # Probar para 4 posibles distancias
         for size_correction in range(5):
-            # Extraer componentes conectados y envolvente del CdB
+            barcode_data = 'E'
+
+            # Extraer componentes conexas y envolvente del CdB
             connected_components_detected = connected_components(edges, mask, size_correction)
             barcode, barcode_selected = barcode_detection(connected_components_detected, images[image_name])
-            barcode_processed = barcode_postprocess(barcode)  
-    
+
+            # Mejorar CdB
+            barcode_processed = barcode_postprocess(barcode)
+            # Si está en vertical no procesar
             if barcode_processed.shape[1] < barcode_processed.shape[0]/3:
-                continue
-                  
-            #cv2.imshow(image_name, utils.resize(barcode))
-            #cv2.waitKey(0)
-            barcode_data = 'E'
+                break
+
             # Probar escaneado a 8 alturas diferentes
             for i in range(1, 8):
-                # Binarizar y mejorar
                 try:
                     barcode_binarized = barcode_extractor(barcode_processed, i/2)
                 except IndexError:
                     break
-    
+
                 # Algoritmo decodificación
                 barcode_data = barcode_decode(barcode_binarized)
                 if 'E' not in barcode_data:
                     break
-    
-            # Print a pantalla del resultado final
+            # Imprime resultado
             print("=> {}\t\t{}".format(image_name, barcode_data))
+            # Si éxito salir
             if 'E' not in barcode_data:
                 break
 
