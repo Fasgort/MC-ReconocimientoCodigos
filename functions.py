@@ -372,7 +372,7 @@ def barcode_decode(scanline_array):
             accumulated += int(decoded_list[x])
         else:
             accumulated += int(decoded_list[x]) * 3
-    if int(decoded_list[12]) != abs((accumulated%10)-10):
+    if int(decoded_list[12]) != abs(10-(accumulated%10)):
         return 'E3'  # Error E3: Checksum is wrong
             
     return decoded_string
