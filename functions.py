@@ -22,6 +22,14 @@ def color_filter(image):
     mask_dilated = cv2.dilate(mask, None, iterations=2)
     return cv2.bitwise_and(image, image, mask=mask_dilated), mask
 
+def barcode_postprocess(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    blur = cv2.medianBlur(gray, 7)
+    smooth = cv2.GaussianBlur(blur,(1,9), 0)
+    clahe = cv2.createCLAHE(clipLimit=2)
+    enh = clahe.apply(smooth)
+    res = cv2.cvtColor(enh, cv2.COLOR_GRAY2BGR)
+    return res
 
 def edge_detection(image):
     """ Extracts edges from image
