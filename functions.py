@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import math
 
+
 def color_filter(image):
     """ Make color filter for given image
     Args:
@@ -10,13 +11,14 @@ def color_filter(image):
         (image,image) Tuple of images, borders highlighted and color filter mask
     """
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    v_limit = 56 # Valor mínimo 20%
-    s_limit = 56 # Saturación máxima 20%
+    v_limit = 56  # Valor mínimo 20%
+    s_limit = 56  # Saturación máxima 20%
     lower_white = np.array([0, 0, v_limit], dtype=np.uint8)
     upper_white = np.array([255, s_limit, 255], dtype=np.uint8)
     mask = cv2.inRange(hsv, lower_white, upper_white)
     mask_dilated = cv2.dilate(mask, None, iterations=2)
     return cv2.bitwise_and(image, image, mask=mask_dilated), mask
+
 
 def simple_rotate(img, param):
     img_aux = img.copy()
@@ -27,6 +29,7 @@ def simple_rotate(img, param):
         M = cv2.getRotationMatrix2D((height / 2, width / 2), -45, 0.7)
     img_aux = cv2.warpAffine(img, M, (height, width))
     return img_aux
+
 
 def rotate(img, mask):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -54,9 +57,9 @@ def rotate(img, mask):
                                         0.7)
             img_aux = cv2.warpAffine(img, M, (height, width))
     return img_aux
-    
+
+
 def rotate_bar(img, param):
-    
     if param == 0:
         return img
     
@@ -83,10 +86,11 @@ def rotate_bar(img, param):
             M = cv2.getRotationMatrix2D((height / 2, width / 2), (math.degrees(theta)),
                                         0.7)
         else:
-            M = cv2.getRotationMatrix2D((height / 2, width / 2), (math.degrees(theta)+90),
+            M = cv2.getRotationMatrix2D((height / 2, width / 2), (math.degrees(theta) + 90),
                                         0.7)
         img_aux = cv2.warpAffine(img, M, (height, width))
     return img_aux
+
 
 def edge_detection(image):
     """ Extracts edges from image
@@ -162,12 +166,12 @@ def connected_components(edges, mask=None, size_correction=0):
     dilated = cv2.dilate(eroded, None, iterations=4)
     # Detectar componentes conectados
     # Ref. http://aishack.in/tutorials/labelling-connected-components-example/
-    
     connected = cv2.connectedComponents(dilated)
     # Asignar a cada uno de las componentes un valor diferenciador
     components = np.uint8((connected[1] * 255) / connected[0])
     res = components
     return res
+
 
 def barcode_detection(connected_component, original_img=None):
     """ Returns image with barcode centered
@@ -206,6 +210,7 @@ def barcode_postprocess(image):
     res = cv2.cvtColor(enh, cv2.COLOR_GRAY2BGR)
     return res
 
+
 def barcode_extractor(barcode_img, scan_x_pos=2):
     """ Extract barcode scan data
     Args:
@@ -217,13 +222,88 @@ def barcode_extractor(barcode_img, scan_x_pos=2):
 
     img = cv2.cvtColor(barcode_img, cv2.COLOR_BGR2GRAY)
     scan_x = int((img.shape[0] * scan_x_pos) / 4)
-    
-    _,th = cv2.threshold(img,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    
+
+    _, th = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
     res = list()
     for pixel in th[scan_x]:
         res.append(1 if pixel == 255 else 0)
     return res
+
+
+def barcode_extractor_custom(barcode_img, scan_x_pos=2):
+    """ Extract barcode scan data
+    Args:
+        barcode_img (BGR image) Barcode image
+        scan_x_pos (int) Height scan position in (0,4)
+    Returns:
+        (list) Data coded in binary list
+    """
+
+    if barcode_img.shape[2] > 1:
+        gray = cv2.cvtColor(barcode_img, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = barcode_img
+    img = gray
+    scan_x = int((img.shape[0] * scan_x_pos) / 4)
+    # 1 Compute luminance
+    luminance = list()
+    for x in range(img.shape[1]):
+        px = img[scan_x, x]
+        luminance.append(px / 255.0)
+    # 2 Get locals max & min luminance
+    local_max = list()
+    local_min = list()
+    aux = 0
+    prev_state = 'dark'
+    for x in range(1, len(img[scan_x]) - 1):
+        # Check all pixels have luminance |max-lm(px)| - |lm(px)-min| > 0.01
+        if luminance[x - 1] - luminance[x] <= 0:
+            # lighter region
+            if luminance[x] - luminance[x + 1] > 0:
+                # darker
+                if abs(aux - luminance[x]) >= 0.01:
+                    if prev_state == 'dark':
+                        local_max.append((x, luminance[x]))
+                        prev_state = 'light'
+                        aux = luminance[x]
+        else:
+            # darker region
+            if luminance[x] - luminance[x + 1] < 0:
+                # lighter
+                if abs(aux - luminance[x]) >= 0.01:
+                    if prev_state == 'light':
+                        local_min.append((x, luminance[x]))
+                        prev_state = 'dark'
+                        aux = luminance[x]
+    # 3 Prune dark max & light min
+    local_max_mean = np.mean([lum_tup[1] for lum_tup in local_max])
+    local_min_mean = np.mean([lum_tup[1] for lum_tup in local_min])
+    local_prune_limit = ((local_max_mean - local_min_mean) / 2) + local_min_mean
+    local_max_pruned = filter(lambda lum_tup: lum_tup[1] > local_prune_limit, local_max)
+    local_min_pruned = filter(lambda lum_tup: lum_tup[1] < local_prune_limit, local_min)
+
+    local_max_min = list()
+    local_max_min.extend(local_max_pruned)
+    local_max_min.extend(local_min_pruned)
+    local_max_min = sorted(local_max_min, key=lambda x: x[0])
+
+    # 4 Adaptive threshold
+    res = list()
+    sensitivity = int(len(img[scan_x]) / 76)
+    for x in range(len(img[scan_x])):
+        prev_lum = [lum_tup[1] for lum_tup in local_max_min if lum_tup[1] <= x]
+        if len(prev_lum) >= sensitivity:
+            prev_lum = prev_lum[-sensitivity:]
+        else:
+            prev_lum = [local_max_min[0][1], local_max_min[1][1]]
+        lum_mean = np.mean(prev_lum)
+        if lum_mean > 1 - (1 / 4):
+            lum_mean = 1 - (1 / 4)
+        threshold_level = lum_mean * 255
+        res.append(1 if img[scan_x][x] > threshold_level else 0)
+    return res
+
 
 def barcode_decode(scanline_array):
     char_array = np.zeros((60, 1), int)  # Carácteres codificados en EAN-13 barcode
@@ -232,10 +312,10 @@ def barcode_decode(scanline_array):
     last_decoded = 0  # Pixel donde empieza a leer
 
     try:
-        
+
         while scanline_array[last_decoded] == 0:
             last_decoded += 1
-        
+
         while change_count != 60:
             pixel_count = 0
             while last_pixel is scanline_array[last_decoded]:
@@ -370,16 +450,16 @@ def barcode_decode(scanline_array):
 
     if 'E' in decoded_string:
         return 'E2'  # Error E2: Some characters couldn't be decoded
-        
+
     # Checksum check EAN-13
     decoded_list = [parity_char] + decoded_1 + decoded_2
     accumulated = 0
-    for x in range(len(decoded_list)-1):
+    for x in range(len(decoded_list) - 1):
         if x % 2 == 0:
             accumulated += int(decoded_list[x])
         else:
             accumulated += int(decoded_list[x]) * 3
-    if int(decoded_list[12]) != abs(10-(accumulated%10)):
+    if int(decoded_list[12]) != abs(10 - (accumulated % 10)):
         return 'E3'  # Error E3: Checksum is wrong
-            
+
     return decoded_string
