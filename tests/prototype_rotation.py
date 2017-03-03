@@ -39,3 +39,4 @@ image_name = 'g5rot.jpg'  # 'a10r.jpg'
 img = cv2.imread(os.path.join(input_path, image_name))
 cv2.imshow(image_name, utils.resize(rotate(img, image_name)))
 cv2.waitKey(0)
+cv2.destroyAllWindows()

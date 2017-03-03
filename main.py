@@ -20,49 +20,76 @@ def main(args):
     images = load_images(args.input)
 
     for image_name, img in images.items():
-        # Obtener máscara de filtro de color
-        color_filtered, mask = color_filter(img)
+        
+        for rotated in range(4):
     
-        # Cambiar a espacio de color escala de grises
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            if rotated < 2:
+                inclination_corrected = simple_rotate(img, rotated)
+            elif rotated == 2:
+                _, mask = color_filter(img)                  
+                inclination_corrected = rotate(img, mask)
+            else:
+                inclination_corrected = img 
+            
+            # Obtener máscara de filtro de color
+            color_filtered, mask = color_filter(inclination_corrected)
+        
+            # Cambiar a espacio de color escala de grises
+            gray = cv2.cvtColor(inclination_corrected, cv2.COLOR_BGR2GRAY)
+        
+            # Detección de bordes
+            edges = edge_detection(gray)
     
-        # Rotar imagen
-        # inclination_corrected = inclination_correction(gray)
+            # Probar para 4 posibles distancias
+            for size_correction in range(5):
+                barcode_data = 'Exception'
+                
+                # Extraer componentes conexas y envolvente del CdB
+                connected_components_detected = connected_components(edges, mask, size_correction)
+                barcode, barcode_selected = barcode_detection(connected_components_detected, images[image_name])
+        
+                for bar_rotate in range(3):    
     
-        # Detección de bordes
-        # edges = edge_detection(inclination_corrected)
-        edges = edge_detection(gray)
+                    # Mejorar CdB
+                    barcode = rotate_bar(barcode, bar_rotate)
+                    barcode_processed = barcode_postprocess(barcode)
+        
+                    # Probar escaneado a 8 alturas diferentes
+                    for scanline in range(1, 8):
+                        try:
+                            barcode_binarized = barcode_extractor(barcode_processed, scanline/2)
+                        except IndexError:
+                            barcode_data = 'Exception'
+                            continue
+        
+                        # Algoritmo decodificación
+                        barcode_data = barcode_decode(barcode_binarized)
+                        if 'E' not in barcode_data:
+                            #print("Resultado adquirido con parámetros: rotated("
+                            #+str(rotated)+"); size_correction("
+                            #+str(size_correction)+"); bar_rotate("
+                            #+str(bar_rotate)+"); scanline("+str(scanline)+").")
+                            break
+                        #else:
+                            #print("=> {}\t\t{}".format(image_name, barcode_data)) # Depuración de errores
 
-        # Probar para 4 posibles distancias
-        for size_correction in range(5):
-            barcode_data = 'E'
-
-            # Extraer componentes conexas y envolvente del CdB
-            connected_components_detected = connected_components(edges, mask, size_correction)
-            barcode, barcode_selected = barcode_detection(connected_components_detected, images[image_name])
-
-            # Mejorar CdB
-            barcode_processed = barcode_postprocess(barcode)
-            # Si está en vertical no procesar
-            if barcode_processed.shape[1] < barcode_processed.shape[0]/3:
-                break
-
-            # Probar escaneado a 8 alturas diferentes
-            for i in range(1, 8):
-                try:
-                    barcode_binarized = barcode_extractor(barcode_processed, i/2)
-                except IndexError:
-                    break
-
-                # Algoritmo decodificación
-                barcode_data = barcode_decode(barcode_binarized)
+                    if 'E' not in barcode_data:
+                        break
+                    #else:
+                        #cv2.imwrite(image_name+str(rotated)+str(size_correction)+str(bar_rotate)+image_name,barcode_processed)
+                
                 if 'E' not in barcode_data:
                     break
-            # Imprime resultado
-            print("=> {}\t\t{}".format(image_name, barcode_data))
-            # Si éxito salir
+                
             if 'E' not in barcode_data:
                 break
+            
+        if 'E' not in barcode_data:
+            print("=> {}\t\t{}".format(image_name, barcode_data))
+            print()
+        else:
+            print("=> {}\t\t{}".format(image_name, "ERROR"))
+            print()
 
 
 def load_images(path):
