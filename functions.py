@@ -206,24 +206,22 @@ def barcode_postprocess(image):
     blur = cv2.medianBlur(gray, 7)
     smooth = cv2.GaussianBlur(blur, (1, 9), 0)
     clahe = cv2.createCLAHE(clipLimit=2)
-    enh = clahe.apply(smooth)
-    res = cv2.cvtColor(enh, cv2.COLOR_GRAY2BGR)
+    res = clahe.apply(smooth)
     return res
 
 
 def barcode_extractor(barcode_img, scan_x_pos=2):
     """ Extract barcode scan data
     Args:
-        barcode_img (BGR image) Barcode image
+        barcode_img (grayscale image) Barcode image
         scan_x_pos (int) Height scan position in (0,4)
     Returns:
         (list) Data coded in binary list
     """
 
-    img = cv2.cvtColor(barcode_img, cv2.COLOR_BGR2GRAY)
-    scan_x = int((img.shape[0] * scan_x_pos) / 4)
+    scan_x = int((barcode_img.shape[0] * scan_x_pos) / 4)
 
-    _, th = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    _, th = cv2.threshold(barcode_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
     res = list()
     for pixel in th[scan_x]:
@@ -234,17 +232,13 @@ def barcode_extractor(barcode_img, scan_x_pos=2):
 def barcode_extractor_custom(barcode_img, scan_x_pos=2):
     """ Extract barcode scan data
     Args:
-        barcode_img (BGR image) Barcode image
+        barcode_img (grayscale image) Barcode image
         scan_x_pos (int) Height scan position in (0,4)
     Returns:
         (list) Data coded in binary list
     """
 
-    if barcode_img.shape[2] > 1:
-        gray = cv2.cvtColor(barcode_img, cv2.COLOR_BGR2GRAY)
-    else:
-        gray = barcode_img
-    img = gray
+    img = barcode_img
     scan_x = int((img.shape[0] * scan_x_pos) / 4)
     # 1 Compute luminance
     luminance = list()
